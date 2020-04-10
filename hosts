@@ -1,0 +1,14 @@
+####################################################
+####################################################
+[www]
+148.251.95.67
+
+[www:vars]
+ansible_python_interpreter=/usr/local/bin/python3
+
+[www_sites]
+lion.kitty.institute
+leppy.kitty.institute
+fox.kitty.institute
+jinxy.kitty.institute
+kitty.kitty.institute

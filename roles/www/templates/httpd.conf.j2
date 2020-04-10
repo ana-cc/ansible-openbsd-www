@@ -1,0 +1,36 @@
+# $OpenBSD: httpd.conf,v 1.20 2018/06/13 15:08:24 reyk Exp $
+
+server "{{ inventory_hostname }}" {
+	listen on * port 80
+	location "/.well-known/acme-challenge/*" {
+		root "/acme"
+		request strip 2
+	}
+	location * {
+		block return 302 "https://$HTTP_HOST$REQUEST_URI"
+	}
+}
+
+{% for vhost in groups['www_sites'] %}
+server {{ lookup('file', 'onion_hostnames/' + vhost) }} {
+	listen on * port 80
+	location * {
+		root "/vhosts/{{ vhost }}"
+	}
+}
+server "{{ vhost }}" {
+	listen on * tls port 443
+	alias {{ lookup('file', 'onion_hostnames/' + vhost) }}
+	tls {
+		certificate "/etc/ssl/{{ vhost }}.fullchain.pem"
+		key "/etc/ssl/private/{{ vhost }}.key"
+	}
+	location "/.well-known/acme-challenge/*" {
+		root "/acme"
+		request strip 2
+	}
+	location * {
+		root "/vhosts/{{ vhost }}"
+	}
+}
+{% endfor %}

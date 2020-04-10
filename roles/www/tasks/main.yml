@@ -1,0 +1,113 @@
+---
+# tor-related setup
+- name: install tor
+  openbsd_pkg:
+    name: ['tor']
+    state: present
+
+- name: install torrc
+  template:
+    src: "torrc"
+    dest: "/etc/tor/torrc"
+    owner: root
+    group: wheel
+    mode: 0644
+  register: torrc
+
+# any private keys for the onion services must be copied before this point
+- name: ensure tor is enabled and started
+  service:
+    name: tor
+    enabled: yes
+    state: started
+
+- name: reload tor
+  service:
+    name: tor
+    state: reloaded
+  when: torrc.changed
+
+- name: wait for tor to generate any new keys
+  pause:
+    seconds: 5
+  when: torrc.changed
+
+- name: retrieve onion hostnames
+  fetch:
+    src: "/var/tor/{{ item }}/hostname"
+    dest: "files/onion_hostnames/{{ item }}"
+    flat: yes
+  with_items: "{{ groups['www_sites'] }}"
+
+- name: create vhost directories
+  file:
+    path: "/var/www/vhosts/{{ item }}"
+    state: directory
+    owner: www
+    group: www
+    mode: 0755
+  with_items: "{{ groups['www_sites'] }}"
+
+- name: create mock site images
+  copy:
+    src: "files/kitty_pictures/{{ item }}.jpg"
+    dest: "/var/www/vhosts/{{ item }}/"
+    mode: 0644
+    owner: www
+    group: www
+  with_items: "{{ groups['www_sites'] }}"
+
+# site content
+- name: create mock site content
+  template:
+    src: "index.html.j2"
+    dest: "/var/www/vhosts/{{ item }}/index.html"
+    mode: 0644
+    owner: www
+    group: www
+  with_items: "{{ groups['www_sites'] }}"
+  vars: 
+    vhost: "{{ item }}" 
+  notify:
+  - reload_httpd
+
+- name: install httpd.conf
+  template:
+    src: "httpd.conf.j2"
+    dest: "/etc/httpd.conf"
+    mode: 0644
+    owner: root
+    group: wheel
+  notify:
+  - reload_httpd
+
+- name: enable and start httpd
+  service:
+    name: httpd
+    enabled: yes
+    state: started
+
+# acme-client related setup
+- name: install acme-client.conf
+  template:
+    src: "acme-client.conf"
+    dest: "/etc/acme-client.conf"
+    owner: root
+    group: wheel
+    mode: 0644
+
+- name: initial acme-client run
+  command: "/usr/sbin/acme-client {{ item }}"
+  args:
+    creates: "/etc/ssl/{{ item }}.fullchain.pem"
+  with_items: "{{ groups['www_sites'] }}"
+  notify:
+  - reload_httpd
+
+- name: renew certificates via root crontab
+  cron:
+    name: "acme-client renew {{ item }}"
+    minute: "0"
+    job: "sleep $((RANDOM \\% 2048)) && acme-client {{ item }} && rcctl reload httpd"
+    user: root
+  with_items: "{{ groups['www_sites'] }}"

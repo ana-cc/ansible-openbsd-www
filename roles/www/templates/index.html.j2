@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="robots" content="noindex"/>
+<title>{{ inventory_hostname }}</title>
+<style type="text/css"><!--
+body { background-color: white; color: black; font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif; }
+hr { border: 0; border-bottom: 1px dashed; }
+
+--></style>
+</head>
+<body>
+<h1>{{ vhost }}</h1>
+<hr>
+<p>"{{ lookup('file','kitty_bios/' + vhost) }}"</p>
+<img src= "{{  vhost }}.jpg" width="500 px"/>
+<hr>
+<address>Powered by OpenBSD</address>
+</body>
+</html>
