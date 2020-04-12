@@ -1,7 +1,4 @@
 ---
 - hosts: www
-  remote_user: ana
-  become_method: doas
-  become: true
   roles:
     - www
